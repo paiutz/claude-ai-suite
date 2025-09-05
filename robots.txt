@@ -1,0 +1,42 @@
+# Robots.txt for Claude AI Suite
+# https://YOUR_USERNAME.github.io/claude-ai-suite/
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /private/
+Disallow: /*.json$
+Disallow: /*.log$
+
+# Allow search engines to index everything
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+# Sitemap location
+Sitemap: https://YOUR_USERNAME.github.io/claude-ai-suite/sitemap.xml
+
+# Crawl-delay for respectful bots
+User-agent: *
+Crawl-delay: 1
