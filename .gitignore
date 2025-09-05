@@ -2,6 +2,7 @@
 node_modules/
 bower_components/
 vendor/
+.pnpm-store/
 
 # Build output
 dist/
@@ -11,6 +12,7 @@ _site/
 .cache/
 *.min.js
 *.min.css
+*.map
 
 # IDE and Editor files
 .vscode/
@@ -25,6 +27,7 @@ _site/
 *.swp
 *.swo
 *~
+.brackets.json
 
 # OS files
 .DS_Store
@@ -35,12 +38,17 @@ _site/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+.directory
 
 # Environment files
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 .env.production
+secrets.json
+credentials.json
 
 # Logs
 logs/
@@ -49,6 +57,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+pnpm-debug.log*
+.npm/
 
 # Testing
 coverage/
@@ -56,11 +66,16 @@ coverage/
 test-results/
 *.lcov
 .coverage
+junit.xml
+test-report.xml
+e2e/videos/
+e2e/screenshots/
 
 # Package files
 *.zip
 *.tar.gz
 *.rar
+*.7z
 
 # Temporary files
 *.tmp
@@ -68,12 +83,18 @@ test-results/
 *.bak
 *.backup
 *.old
+*.orig
+~*
 
 # API keys and secrets
-secrets.json
-credentials.json
-firebase-config.js
 api-keys.js
+firebase-config.js
+anthropic-key.txt
+puter-config.json
+*.key
+*.pem
+*.cert
+*.crt
 
 # Production files
 *.production.js
@@ -83,10 +104,14 @@ api-keys.js
 .local/
 local-data/
 dev-data/
+.sandbox/
+playground/
 
 # Documentation build
 docs/_build/
 docs/.doctrees/
+_book/
+.docusaurus/
 
 # Python
 __pycache__/
@@ -97,42 +122,96 @@ __pycache__/
 env/
 venv/
 .venv/
+ENV/
+.pyenv/
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Ruby
 *.gem
 *.rbc
 .bundle/
 .config
-coverage/
 Gemfile.lock
+InstalledFiles
+_yardoc
+lib/bundler/man/
+pkg/
+rdoc/
+spec/reports/
 
 # PHP
 composer.phar
 /vendor/
-
-# Certificates
-*.pem
-*.key
-*.crt
-*.cert
+composer.lock
 
 # Database
 *.sqlite
 *.sqlite3
 *.db
+*.mdb
+*.accdb
 
 # Cache
 .sass-cache/
 .eslintcache
 .stylelintcache
 .parcel-cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
 
 # Analytics
 analytics/
 .ga-credentials.json
+gtag/
+matomo/
+
+# Custom build artifacts
+claude-ai-suite-*.zip
+claude-ai-suite-*.tar.gz
+backup-*.json
+
+# Service Worker
+sw-*.js
+!sw.js
+workbox-*.js
+
+# PWA
+.well-known/
+assetlinks.json
+
+# Debug files
+debug.log
+error.log
+access.log
+
+# Performance reports
+lighthouse-reports/
+performance-results/
+
+# Generated files
+sitemap.xml.gz
+robots.txt.gz
+
+# Deployment
+.deploy/
+.netlify/
+.vercel/
+.firebase/
+.amplify/
 
 # Custom
 TODO.md
 NOTES.md
 scratch/
-playground/
+private/
+internal-docs/
+
+# But keep these files
+!.gitkeep
+!.github/
+!.nvmrc
+!.prettierrc
+!.eslintrc.js
