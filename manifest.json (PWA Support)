@@ -1,17 +1,55 @@
 {
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
   "name": "Claude AI Suite - Professional AI Chat Interface",
   "short_name": "Claude AI",
-  "description": "Chat professionale con Claude AI. Interfaccia moderna, veloce e privata powered by Puter.js",
-  "start_url": "/",
+  "description": "Chat professionale con Claude AI. Supporta Claude 3 e preparato per Claude 4. Interfaccia moderna, veloce e privata con modalità offline.",
+  "start_url": "/?utm_source=pwa",
   "display": "standalone",
   "theme_color": "#6366F1",
   "background_color": "#0F0F0F",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "scope": "/",
   "lang": "it",
   "dir": "ltr",
-  "categories": ["productivity", "utilities"],
+  "id": "claude-ai-suite-v2",
+  "categories": [
+    "productivity",
+    "utilities",
+    "education",
+    "business"
+  ],
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
   "icons": [
+    {
+      "src": "assets/images/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "assets/images/icon-192.png",
       "sizes": "192x192",
@@ -19,38 +57,111 @@
       "purpose": "any maskable"
     },
     {
+      "src": "assets/images/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "assets/images/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "assets/images/icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "screenshots": [
     {
-      "src": "assets/images/screenshots/desktop.png",
+      "src": "assets/images/screenshots/desktop-home.png",
       "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Claude AI Suite Desktop View"
+      "label": "Claude AI Suite - Home Screen Desktop"
     },
     {
-      "src": "assets/images/screenshots/mobile.png",
+      "src": "assets/images/screenshots/desktop-chat.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Claude AI Suite - Chat Interface Desktop"
+    },
+    {
+      "src": "assets/images/screenshots/mobile-home.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Claude AI Suite Mobile View"
+      "label": "Claude AI Suite - Home Screen Mobile"
+    },
+    {
+      "src": "assets/images/screenshots/mobile-chat.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Claude AI Suite - Chat Interface Mobile"
+    },
+    {
+      "src": "assets/images/screenshots/tablet-home.png",
+      "sizes": "1024x768",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Claude AI Suite - Tablet View"
     }
   ],
   "shortcuts": [
     {
       "name": "Nuova Chat",
       "short_name": "Nuova",
-      "description": "Inizia una nuova conversazione",
+      "description": "Inizia una nuova conversazione con Claude AI",
       "url": "/?action=new-chat",
       "icons": [
         {
-          "src": "assets/images/icon-192.png",
-          "sizes": "192x192"
+          "src": "assets/images/shortcut-new.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Ultime Chat",
+      "short_name": "Recenti",
+      "description": "Visualizza le conversazioni recenti",
+      "url": "/?action=recent",
+      "icons": [
+        {
+          "src": "assets/images/shortcut-recent.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Claude 3 Opus",
+      "short_name": "Opus",
+      "description": "Usa il modello più potente",
+      "url": "/?model=claude-3-opus",
+      "icons": [
+        {
+          "src": "assets/images/shortcut-opus.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Impostazioni",
+      "short_name": "Settings",
+      "description": "Configura l'applicazione",
+      "url": "/?action=settings",
+      "icons": [
+        {
+          "src": "assets/images/shortcut-settings.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }
@@ -62,9 +173,66 @@
     "params": {
       "title": "title",
       "text": "text",
-      "url": "url"
+      "url": "url",
+      "files": [
+        {
+          "name": "file",
+          "accept": ["text/*", "application/pdf"]
+        }
+      ]
     }
   },
+  "protocol_handlers": [
+    {
+      "protocol": "web+claude",
+      "url": "/?url=%s"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://paiutz.github.io/claude-ai-suite/manifest.json"
+    }
+  ],
   "prefer_related_applications": false,
-  "related_applications": []
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "handle_links": "preferred",
+  "file_handlers": [
+    {
+      "action": "/open",
+      "accept": {
+        "text/plain": [".txt"],
+        "text/markdown": [".md"],
+        "application/json": [".json"],
+        "text/csv": [".csv"]
+      }
+    }
+  ],
+  "features": {
+    "ai_chat": true,
+    "offline_mode": true,
+    "multi_model": true,
+    "dark_theme": true,
+    "export_import": true,
+    "claude_4_ready": true
+  },
+  "permissions": [
+    "storage",
+    "notifications"
+  ],
+  "optional_permissions": [
+    "clipboardWrite",
+    "fileSystem"
+  ]
 }
