@@ -2,29 +2,29 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Claude AI Suite - Interfaccia professionale per conversazioni con Claude AI. Chat avanzata con supporto multi-modello, tema scuro/chiaro e salvataggio locale.">
     <meta name="keywords" content="Claude AI, AI Chat, Puter.js, Intelligenza Artificiale, Chatbot">
-    <meta name="author" content="Your Name">
+    <meta name="author" content="Claude AI Suite">
     <meta name="robots" content="index, follow">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKNT4AejU+AHo1PgUKNT4IejU+CHo1PgUKNT4AcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApFPhWaVU4e+lVOH/pVTh/6VU4e+kU+FZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApFThb6VU4f+lVOH/pVTh/6VU4f+lVOH/pVTh/6VU4f+kVOFvAAAAAAAAAAAAAAAAAAAAAAAAAAClVOEHpVPha6VU4f+lVOH/pVTh/6VU4f+lVOH/pVTh/6VU4f+lVOH/pVTh/6VT4WulVOEHAAAAAAAAAAAAAAAApVTgHaVU4e+lVOH/nEnf/3UZ2P90GNj/dBjY/3QY2P90GNj/dRnY/5xJ3/+lVOH/pVTh76VU4B0AAAAApVTgB6VU4e+lVOH/dBjY/3QY2P90GNj/dBjY/3QY2P90GNj/dBjY/3QY2P90GNj/dBjY/6VU4f+lVOHvpVTgB6VU4FClVOH/hzDc/3QY2P90GNj/dBjY/3QY2P90GNj/dBjY/3QY2P90GNj/dBjY/3QY2P+HMNz/pVTh/6VU4FClVOGHpVTh/3UZ2P90GNj/dBjY/3QY2P+HMNz/pVTh/6VU4f+HMNz/dBjY/3QY2P90GNj/dRnY/6VU4f+lVOGHpVThh6VU4f91Gdj/dBjY/3QY2P90GNj/hzDc/6VU4f+lVOH/hzDc/3QY2P90GNj/dBjY/3UZ2P+lVOH/pVThh6VU4FClVOH/hzDc/3QY2P90GNj/dBjY/3QY2P90GNj/dBjY/3QY2P90GNj/dBjY/3QY2P+HMNz/pVTh/6VU4FClVOAHpVTh76VU4f90GNj/dBjY/3QY2P90GNj/dBjY/3QY2P90GNj/dBjY/3QY2P90GNj/pVTh/6VU4e+lVOAHAAAAAKVU4B2lVOHvpVTh/5xJ3/91Gdj/dBjY/3QY2P90GNj/dBjY/3UZ2P+cSd//pVTh/6VU4e+lVOAdAAAAAAAAAAAAAAAApVThB6VT4WulVOH/pVTh/6VU4f+lVOH/pVTh/6VU4f+lVOH/pVTh/6VT4WulVOEHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKRU4W+lVOH/pVTh/6VU4f+lVOH/pFThbwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACkU+FZpVTh76VU4f+lVOHvpFPhWQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKNT4AejU+AHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//8AAP//AADgBwAAwAMAAIABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAAwAMAAOAHAAD//wAA//8AAA==">
+    <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==">
     
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="Claude AI Suite - Professional AI Chat Interface">
     <meta property="og:description" content="Chat professionale con Claude AI. Interfaccia moderna, veloce e privata.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://yourusername.github.io/claude-ai-suite/">
-    <meta property="og:image" content="https://yourusername.github.io/claude-ai-suite/assets/images/og-image.png">
+    <meta property="og:url" content="https://paiutz.github.io/claude-ai-suite/">
+    <meta property="og:image" content="https://paiutz.github.io/claude-ai-suite/assets/images/og-image.png">
     <meta property="og:locale" content="it_IT">
     
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Claude AI Suite">
     <meta name="twitter:description" content="Chat professionale con Claude AI. Interfaccia moderna, veloce e privata.">
-    <meta name="twitter:image" content="https://yourusername.github.io/claude-ai-suite/assets/images/og-image.png">
+    <meta name="twitter:image" content="https://paiutz.github.io/claude-ai-suite/assets/images/og-image.png">
     
     <!-- PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -47,22 +47,34 @@
     <!-- Main Styles -->
     <link rel="stylesheet" href="assets/css/style.css">
     
-    <!-- Structured Data -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Claude AI Suite",
-        "description": "Professional AI chat interface powered by Claude and Puter.js",
-        "url": "https://yourusername.github.io/claude-ai-suite/",
-        "applicationCategory": "Productivity",
-        "operatingSystem": "Any",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-        }
-    }
+    <!-- Mobile Debug Helper -->
+    <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Error: ', msg, '\nURL: ', url, '\nLine: ', lineNo);
+            
+            // Create visible error on page only in development
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    left: 20px;
+                    right: 20px;
+                    background: #ff4444;
+                    color: white;
+                    padding: 10px;
+                    border-radius: 5px;
+                    z-index: 9999;
+                    font-size: 12px;
+                `;
+                errorDiv.textContent = `Error: ${msg} (Line: ${lineNo})`;
+                document.body.appendChild(errorDiv);
+                
+                setTimeout(() => errorDiv.remove(), 5000);
+            }
+            
+            return false;
+        };
     </script>
     
     <title>Claude AI Suite - Professional AI Chat Interface</title>
@@ -92,14 +104,14 @@
                     <div class="logo-icon">
                         <i class="fas fa-robot"></i>
                     </div>
-                    <span class="logo-text">Claude AI Suite</span>
+                    <span class="logo-text">Claude AI</span>
                 </div>
             </div>
             
             <div class="header-center">
                 <div class="search-bar" id="searchBar">
                     <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Cerca nelle conversazioni..." id="searchInput">
+                    <input type="text" placeholder="Cerca..." id="searchInput">
                 </div>
             </div>
             
@@ -149,7 +161,7 @@
                     </button>
                     <button class="sidebar-action" id="exportAllBtn">
                         <i class="fas fa-download"></i>
-                        <span>Esporta Tutto</span>
+                        <span>Esporta</span>
                     </button>
                 </div>
             </aside>
@@ -162,7 +174,7 @@
                         <div class="welcome-content">
                             <h1 class="welcome-title">Benvenuto in Claude AI Suite</h1>
                             <p class="welcome-subtitle">
-                                Interfaccia professionale per conversazioni AI avanzate
+                                Chat intelligente con Claude AI
                             </p>
                             
                             <div class="welcome-features">
@@ -170,32 +182,32 @@
                                     <div class="feature-icon">
                                         <i class="fas fa-bolt"></i>
                                     </div>
-                                    <h3>Veloce e Potente</h3>
-                                    <p>Risposte istantanee con i modelli Claude più avanzati</p>
+                                    <h3>Veloce</h3>
+                                    <p>Risposte immediate</p>
                                 </div>
                                 
                                 <div class="welcome-feature">
                                     <div class="feature-icon">
                                         <i class="fas fa-shield-alt"></i>
                                     </div>
-                                    <h3>Privacy First</h3>
-                                    <p>I tuoi dati rimangono sul tuo dispositivo</p>
+                                    <h3>Privato</h3>
+                                    <p>Dati salvati localmente</p>
                                 </div>
                                 
                                 <div class="welcome-feature">
                                     <div class="feature-icon">
                                         <i class="fas fa-palette"></i>
                                     </div>
-                                    <h3>Interfaccia Moderna</h3>
-                                    <p>Design professionale con tema chiaro/scuro</p>
+                                    <h3>Moderno</h3>
+                                    <p>Interfaccia elegante</p>
                                 </div>
                                 
                                 <div class="welcome-feature">
                                     <div class="feature-icon">
                                         <i class="fas fa-code"></i>
                                     </div>
-                                    <h3>Supporto Codice</h3>
-                                    <p>Syntax highlighting e formattazione avanzata</p>
+                                    <h3>Potente</h3>
+                                    <p>Supporto codice</p>
                                 </div>
                             </div>
                             
@@ -203,10 +215,6 @@
                                 <button class="primary-btn" onclick="app.createNewChat()">
                                     <i class="fas fa-plus"></i>
                                     Inizia una Nuova Chat
-                                </button>
-                                <button class="secondary-btn" onclick="app.showTutorial()">
-                                    <i class="fas fa-question-circle"></i>
-                                    Come Funziona
                                 </button>
                             </div>
                         </div>
@@ -220,4 +228,158 @@
                                 <p class="chat-meta" id="chatMeta">0 messaggi</p>
                             </div>
                             <div class="chat-actions">
-                                <button class="icon-btn" id="editTitleBtn" aria-label="
+                                <button class="icon-btn" id="editTitleBtn" aria-label="Edit title">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="icon-btn" id="exportChatBtn" aria-label="Export chat">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button class="icon-btn" id="deleteChatBtn" aria-label="Delete chat">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="messages-area" id="messagesArea">
+                            <div class="messages-wrapper" id="messagesWrapper">
+                                <!-- Messages will be populated here -->
+                            </div>
+                        </div>
+
+                        <div class="input-area">
+                            <div class="input-wrapper">
+                                <div class="input-controls">
+                                    <textarea 
+                                        id="messageInput" 
+                                        class="input-field" 
+                                        placeholder="Scrivi un messaggio... (Ctrl+Enter per inviare)"
+                                        rows="1"
+                                    ></textarea>
+                                    <div class="input-actions">
+                                        <button class="send-btn" id="sendBtn">
+                                            <span>Invia</span>
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar" id="statusBar">
+            <div class="status-item">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Connesso</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-message"></i>
+                <span id="messageCount">0 messaggi</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-microchip"></i>
+                <span id="modelStatus">Claude 3 Sonnet</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Mock Puter for offline functionality -->
+    <script>
+        // Create mock Puter if not available
+        if (typeof puter === 'undefined') {
+            console.warn('⚠️ Puter.js not available, using mock mode');
+            window.puter = {
+                ai: {
+                    chat: async (message, options) => {
+                        // Simulate API delay
+                        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+                        
+                        // Return mock responses
+                        const responses = [
+                            "Sono in modalità offline. Non posso connettermi a Claude AI in questo momento.",
+                            "Questa è una risposta di test. L'app funziona ma non è connessa ai server Claude.",
+                            "Per utilizzare Claude AI, assicurati di avere una connessione internet attiva.",
+                            "Modalità demo: " + message
+                        ];
+                        
+                        return {
+                            text: responses[Math.floor(Math.random() * responses.length)]
+                        };
+                    }
+                }
+            };
+        }
+    </script>
+
+    <!-- Puter.js SDK -->
+    <script src="https://js.puter.com/v2/"></script>
+    
+    <!-- Configuration -->
+    <script src="assets/js/config.js"></script>
+    
+    <!-- Main Application -->
+    <script src="assets/js/app.js"></script>
+    
+    <!-- Initialize App with Fallback -->
+    <script>
+        // Initialize app with error handling
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                console.log('DOM loaded, initializing app...');
+                window.app = new ClaudeAIApp();
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
+                // Force show app even on error
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+                
+                // Show error notification
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'notification error';
+                errorDiv.innerHTML = `
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div>
+                        <div class="notification-title">Errore di inizializzazione</div>
+                        <div class="notification-message">Ricarica la pagina per riprovare</div>
+                    </div>
+                `;
+                document.body.appendChild(errorDiv);
+            }
+        });
+        
+        // Fallback timeout - force show app after 5 seconds
+        setTimeout(function() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const app = document.getElementById('app');
+            
+            if (loadingScreen && loadingScreen.style.display !== 'none') {
+                console.warn('Loading timeout, forcing app display');
+                loadingScreen.style.display = 'none';
+                if (app) {
+                    app.style.display = 'flex';
+                }
+            }
+        }, 5000);
+        
+        // Service Worker registration with error handling
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('SW registered:', registration);
+                    })
+                    .catch(error => {
+                        console.warn('SW registration failed:', error);
+                        // Don't block app if SW fails
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
