@@ -1,0 +1,134 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm install -g html-minifier-terser
+          npm install -g clean-css-cli
+          npm install -g terser
+          npm install -g imagemin-cli
+          npm install -g imagemin-pngquant
+          npm install -g imagemin-mozjpeg
+
+      - name: Create build directory
+        run: mkdir -p _site
+
+      - name: Copy files
+        run: |
+          cp -r assets _site/
+          cp index.html _site/
+          cp manifest.json _site/
+          cp sw.js _site/
+          cp robots.txt _site/
+          cp CNAME _site/ || true
+
+      - name: Minify HTML
+        run: |
+          html-minifier-terser \
+            --collapse-whitespace \
+            --remove-comments \
+            --remove-optional-tags \
+            --remove-redundant-attributes \
+            --remove-script-type-attributes \
+            --remove-tag-whitespace \
+            --use-short-doctype \
+            --minify-css true \
+            --minify-js true \
+            _site/index.html -o _site/index.html
+
+      - name: Minify CSS
+        run: |
+          cleancss -o _site/assets/css/style.min.css _site/assets/css/style.css
+          mv _site/assets/css/style.min.css _site/assets/css/style.css
+
+      - name: Minify JavaScript
+        run: |
+          terser _site/assets/js/app.js -c -m -o _site/assets/js/app.min.js
+          terser _site/sw.js -c -m -o _site/sw.min.js
+          mv _site/assets/js/app.min.js _site/assets/js/app.js
+          mv _site/sw.min.js _site/sw.js
+
+      - name: Optimize images
+        run: |
+          find _site/assets/images -name "*.png" -exec imagemin {} --plugin=pngquant --out-dir={} \; || true
+          find _site/assets/images -name "*.jpg" -o -name "*.jpeg" -exec imagemin {} --plugin=mozjpeg --out-dir={} \; || true
+
+      - name: Generate sitemap
+        run: |
+          cat > _site/sitemap.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url>
+              <loc>https://YOUR_USERNAME.github.io/claude-ai-suite/</loc>
+              <lastmod>$(date +%Y-%m-%d)</lastmod>
+              <changefreq>weekly</changefreq>
+              <priority>1.0</priority>
+            </url>
+          </urlset>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+  # Deployment job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Lighthouse CI
+  lighthouse:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            https://YOUR_USERNAME.github.io/claude-ai-suite/
+          uploadArtifacts: true
+          temporaryPublicStorage: true
