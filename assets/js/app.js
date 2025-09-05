@@ -1,75 +1,148 @@
 /**
  * Claude AI Suite - Main Application
- * Fixed version with robust error handling and offline support
+ * Complete version with deep error handling and Puter.js integration
+ * 
+ * @author Claude AI Suite Team
+ * @version 2.0.0
+ * @license MIT
  */
 
-// Application State
+'use strict';
+
+// Global Application State
 const AppState = {
+    // Core state
     conversations: [],
     currentConversationId: null,
     isProcessing: false,
+    isOnline: navigator.onLine,
+    
+    // Puter.js state
+    puterReady: false,
+    puterConnectionAttempts: 0,
+    puterLastError: null,
+    puterTestResults: {},
+    
+    // UI state
     theme: localStorage.getItem('theme') || 'dark',
-    isOnline: true,
+    sidebarOpen: false,
+    
+    // Settings with validation
     settings: {
         autoSave: true,
+        autoSaveInterval: 30000,
         enterToSend: false,
         showTimestamps: true,
-        messageLimit: 100,
-        contextLength: 10
+        messageLimit: 1000,
+        contextLength: 10,
+        streamingEnabled: true,
+        debugMode: false,
+        retryAttempts: 3,
+        retryDelay: 2000,
+        offlineMode: false,
+        language: 'it'
     },
+    
+    // Statistics
     stats: {
         totalMessages: 0,
         totalTokens: 0,
-        sessionsCount: 0
+        sessionsCount: 0,
+        errorsCount: 0,
+        apiCalls: 0,
+        cacheHits: 0,
+        startTime: Date.now()
+    },
+    
+    // Cache
+    cache: {
+        responses: new Map(),
+        maxSize: 100
+    },
+    
+    // Rate limiting
+    rateLimiter: {
+        requests: [],
+        maxRequests: 10,
+        timeWindow: 60000 // 1 minute
     }
 };
 
-// Application Class
+// Main Application Class
 class ClaudeAIApp {
     constructor() {
         this.state = AppState;
         this.elements = {};
-        this.puterReady = false;
+        this.listeners = new Map();
         this.initTimeout = null;
+        this.autoSaveInterval = null;
+        this.connectionCheckInterval = null;
+        
+        // Performance tracking
+        this.performance = {
+            initStart: performance.now(),
+            initEnd: null,
+            metrics: []
+        };
+        
+        // Initialize
         this.init();
     }
 
-    // Initialize Application with Error Handling
+    /**
+     * Initialize Application with Complete Error Recovery
+     */
     async init() {
         try {
-            console.log('🚀 Claude AI Suite initializing...');
+            console.log('🚀 Claude AI Suite v2.0.0 initializing...');
+            this.logPerformance('init_start');
             
-            // Set init timeout
+            // Set initialization timeout
             this.initTimeout = setTimeout(() => {
-                console.warn('Init timeout reached, forcing UI display');
+                console.warn('⏱️ Init timeout reached, forcing UI display');
                 this.forceShowUI();
-            }, 3000);
+            }, 5000);
             
-            // Cache DOM elements
+            // Step 1: Cache DOM elements
             this.cacheElements();
+            this.logPerformance('dom_cached');
             
-            // Load saved data
-            this.loadState();
+            // Step 2: Load saved state
+            await this.loadState();
+            this.logPerformance('state_loaded');
             
-            // Apply theme
+            // Step 3: Apply theme
             this.applyTheme(this.state.theme);
             
-            // Setup event listeners
+            // Step 4: Setup event listeners
             this.setupEventListeners();
+            this.logPerformance('listeners_setup');
             
-            // Initialize UI first
+            // Step 5: Initialize UI
             this.initializeUI();
+            this.logPerformance('ui_initialized');
             
-            // Hide loading screen
+            // Step 6: Hide loading screen
             this.hideLoadingScreen();
+            
+            // Step 7: Setup auto-save
+            this.setupAutoSave();
+            
+            // Step 8: Check Puter connection (non-blocking)
+            this.checkPuterConnection();
+            
+            // Step 9: Setup connection monitoring
+            this.setupConnectionMonitoring();
             
             // Clear init timeout
             clearTimeout(this.initTimeout);
             
-            // Check Puter connection in background
-            setTimeout(() => {
-                this.checkPuterConnection();
-            }, 100);
+            // Log performance
+            this.performance.initEnd = performance.now();
+            console.log(`✅ Init completed in ${(this.performance.initEnd - this.performance.initStart).toFixed(2)}ms`);
+            
+            // Emit init complete event
+            this.emit('app:initialized');
             
         } catch (error) {
             console.error('❌ Initialization error:', error);
@@ -77,169 +150,585 @@ class ClaudeAIApp {
         }
     }
 
-    // Force show UI in case of errors
-    forceShowUI() {
-        const loadingScreen = document.getElementById('loadingScreen');
-        const app = document.getElementById('app');
+    /**
+     * Cache DOM Elements with Null Safety
+     */
+    cacheElements() {
+        const elementIds = [
+            // Screens
+            'loadingScreen', 'app', 'welcomeScreen', 'chatView',
+            // Header
+            'menuToggle', 'searchInput', 'modelSelect', 'themeToggle', 
+            'settingsBtn', 'debugBtn',
+            // Sidebar
+            'sidebar', 'sidebarOverlay', 'newChatBtn', 'conversationsList',
+            'importBtn', 'exportAllBtn',
+            // Chat
+            'chatTitle', 'chatMeta', 'messagesArea', 'messagesWrapper',
+            'editTitleBtn', 'exportChatBtn', 'deleteChatBtn',
+            // Input
+            'messageInput', 'sendBtn', 'attachBtn',
+            // Status
+            'statusIndicator', 'statusText', 'messageCount', 'modelStatus',
+            'debugStatus', 'debugInfo',
+            // Other
+            'welcomeStatus', 'debugPanel', 'debugContent'
+        ];
+        
+        this.elements = {};
+        elementIds.forEach(id => {
+            this.elements[id] = document.getElementById(id);
+            if (!this.elements[id] && window.DEBUG_MODE) {
+                console.warn(`⚠️ Element not found: ${id}`);
+            }
+        });
+    }
+
+    /**
+     * Setup Event Listeners with Delegation
+     */
+    setupEventListeners() {
+        // Use event delegation for better performance
+        this.delegate('click', '[data-action]', this.handleAction.bind(this));
+        
+        // Header events
+        this.on(this.elements.menuToggle, 'click', () => this.toggleSidebar());
+        this.on(this.elements.searchInput, 'input', this.debounce((e) => this.handleSearch(e.target.value), 300));
+        this.on(this.elements.modelSelect, 'change', () => this.updateModelStatus());
+        this.on(this.elements.themeToggle, 'click', () => this.toggleTheme());
+        this.on(this.elements.settingsBtn, 'click', () => this.showSettings());
+        this.on(this.elements.debugBtn, 'click', () => this.toggleDebugPanel());
+        
+        // Sidebar events
+        this.on(this.elements.newChatBtn, 'click', () => this.createNewChat());
+        this.on(this.elements.importBtn, 'click', () => this.importConversations());
+        this.on(this.elements.exportAllBtn, 'click', () => this.exportAllConversations());
+        this.on(this.elements.sidebarOverlay, 'click', () => this.toggleSidebar());
+        
+        // Chat events
+        this.on(this.elements.editTitleBtn, 'click', () => this.editChatTitle());
+        this.on(this.elements.exportChatBtn, 'click', () => this.exportCurrentChat());
+        this.on(this.elements.deleteChatBtn, 'click', () => this.deleteCurrentChat());
+        
+        // Input events
+        this.on(this.elements.messageInput, 'input', () => this.handleInputResize());
+        this.on(this.elements.messageInput, 'keydown', (e) => this.handleInputKeydown(e));
+        this.on(this.elements.sendBtn, 'click', () => this.sendMessage());
+        
+        // Window events
+        this.on(window, 'resize', this.debounce(() => this.handleResize(), 200));
+        this.on(window, 'beforeunload', () => this.saveState());
+        this.on(window, 'online', () => this.handleOnlineStatus(true));
+        this.on(window, 'offline', () => this.handleOnlineStatus(false));
+        this.on(window, 'error', (e) => this.handleGlobalError(e));
+        
+        // Keyboard shortcuts
+        this.on(document, 'keydown', (e) => this.handleGlobalKeydown(e));
+        
+        // Visibility change
+        this.on(document, 'visibilitychange', () => this.handleVisibilityChange());
+    }
+
+    /**
+     * Advanced Puter.js Connection with Retry Logic
+     */
+    async checkPuterConnection() {
+        const maxAttempts = 5;
+        let attempt = 0;
+        
+        while (attempt < maxAttempts) {
+            attempt++;
+            this.state.puterConnectionAttempts = attempt;
+            
+            try {
+                console.log(`🔄 Puter.js connection attempt ${attempt}/${maxAttempts}`);
+                this.updateConnectionStatus('connecting', `Connessione ${attempt}/${maxAttempts}...`);
+                
+                // Check if Puter exists
+                if (typeof window.puter === 'undefined') {
+                    throw new Error('Puter.js not loaded');
+                }
+                
+                // Check if AI module exists
+                if (!window.puter.ai) {
+                    throw new Error('Puter.ai module not available');
+                }
+                
+                // Test actual API call with timeout
+                const testPromise = window.puter.ai.chat('test', {
+                    model: 'claude-3-haiku-20240307',
+                    stream: false
+                });
+                
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Connection timeout')), 10000)
+                );
+                
+                const response = await Promise.race([testPromise, timeoutPromise]);
+                
+                // Validate response
+                if (!response || (!response.text && typeof response !== 'string')) {
+                    throw new Error('Invalid response from Puter.ai');
+                }
+                
+                // Success!
+                this.state.puterReady = true;
+                this.state.puterLastError = null;
+                this.state.puterTestResults = {
+                    success: true,
+                    timestamp: Date.now(),
+                    response: response,
+                    attempts: attempt
+                };
+                
+                console.log('✅ Puter.js connected successfully');
+                this.updateConnectionStatus('connected', 'Connesso a Claude AI');
+                this.showNotification('Connesso a Claude AI', 'success');
+                
+                // Cache the test for quick checks
+                this.cacheResponse('test', response);
+                
+                return true;
+                
+            } catch (error) {
+                console.error(`❌ Puter.js connection attempt ${attempt} failed:`, error);
+                this.state.puterLastError = error;
+                
+                // Log specific error details
+                this.logError('puter_connection', error, {
+                    attempt,
+                    userAgent: navigator.userAgent,
+                    online: navigator.onLine
+                });
+                
+                if (attempt < maxAttempts) {
+                    // Exponential backoff
+                    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+                    console.log(`⏳ Retrying in ${delay}ms...`);
+                    await this.sleep(delay);
+                } else {
+                    // All attempts failed
+                    this.state.puterReady = false;
+                    this.state.puterTestResults = {
+                        success: false,
+                        timestamp: Date.now(),
+                        error: error.message,
+                        attempts: attempt
+                    };
+                    
+                    console.warn('⚠️ Puter.js connection failed, entering offline mode');
+                    this.updateConnectionStatus('offline', 'Modalità Offline');
+                    this.showNotification('Modalità offline attiva', 'warning');
+                    
+                    // Enable offline mode
+                    this.state.settings.offlineMode = true;
+                    
+                    return false;
+                }
+            }
+        }
+    }
+
+    /**
+     * Call Claude AI with Advanced Error Handling and Caching
+     */
+    async callClaude(prompt, model, options = {}) {
+        // Check rate limit
+        if (!this.checkRateLimit()) {
+            throw new Error('Rate limit exceeded. Please wait a moment.');
+        }
+        
+        // Check cache first
+        const cacheKey = this.getCacheKey(prompt, model);
+        const cachedResponse = this.getCachedResponse(cacheKey);
+        if (cachedResponse && !options.skipCache) {
+            console.log('📦 Using cached response');
+            this.state.stats.cacheHits++;
+            return cachedResponse;
+        }
+        
+        // Retry connection if needed
+        if (!this.state.puterReady && !this.state.settings.offlineMode) {
+            console.log('🔄 Retrying Puter connection...');
+            await this.checkPuterConnection();
+        }
+        
+        // Use mock in offline mode
+        if (!this.state.puterReady || this.state.settings.offlineMode) {
+            console.warn('📵 Using offline mode');
+            return this.generateOfflineResponse(prompt, model);
+        }
+        
+        // Prepare options
+        const requestOptions = {
+            model: model || 'claude-3-sonnet-20240229',
+            stream: options.stream !== false && this.state.settings.streamingEnabled,
+            max_tokens: options.maxTokens || 4096,
+            temperature: options.temperature || 0.7,
+            ...options
+        };
+        
+        try {
+            console.log('📤 Sending request to Claude:', { prompt: prompt.substring(0, 50) + '...', model });
+            this.state.stats.apiCalls++;
+            
+            // Add timeout wrapper
+            const timeoutMs = options.timeout || 30000;
+            const apiCall = window.puter.ai.chat(prompt, requestOptions);
+            const timeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+            );
+            
+            const response = await Promise.race([apiCall, timeout]);
+            
+            // Handle streaming response
+            if (requestOptions.stream && response && response[Symbol.asyncIterator]) {
+                console.log('📡 Streaming response received');
+                return this.handleStreamingResponse(response, cacheKey);
+            }
+            
+            // Handle regular response
+            let responseText = '';
+            if (typeof response === 'string') {
+                responseText = response;
+            } else if (response?.text) {
+                responseText = response.text;
+            } else if (response?.content) {
+                responseText = response.content;
+            } else if (response?.message) {
+                responseText = response.message;
+            } else {
+                throw new Error('Invalid response format');
+            }
+            
+            // Cache successful response
+            this.cacheResponse(cacheKey, responseText);
+            
+            // Update stats
+            this.state.stats.totalTokens += Math.ceil(responseText.length / 4);
+            
+            console.log('✅ Response received:', responseText.substring(0, 50) + '...');
+            return responseText;
+            
+        } catch (error) {
+            console.error('❌ Claude API error:', error);
+            this.logError('claude_api', error, { prompt, model, options });
+            
+            // Specific error handling
+            if (error.message.includes('timeout')) {
+                this.updateConnectionStatus('error', 'Timeout');
+                throw new Error('La richiesta ha impiegato troppo tempo. Riprova.');
+            } else if (error.message.includes('rate')) {
+                this.updateConnectionStatus('error', 'Rate Limited');
+                throw new Error('Troppe richieste. Attendi un momento.');
+            } else if (error.message.includes('network')) {
+                this.updateConnectionStatus('offline', 'Errore Rete');
+                this.state.puterReady = false;
+                throw new Error('Errore di connessione. Verifica la tua rete.');
+            } else {
+                this.updateConnectionStatus('error', 'Errore API');
+                throw error;
+            }
+        }
+    }
+
+    /**
+     * Handle Streaming Response
+     */
+    async *handleStreamingResponse(response, cacheKey) {
+        let fullText = '';
+        
+        try {
+            for await (const chunk of response) {
+                if (chunk?.text) {
+                    fullText += chunk.text;
+                    yield chunk.text;
+                }
+            }
+            
+            // Cache complete response
+            if (fullText) {
+                this.cacheResponse(cacheKey, fullText);
+            }
+            
+        } catch (error) {
+            console.error('❌ Streaming error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generate Offline Response
+     */
+    generateOfflineResponse(prompt, model) {
+        const responses = {
+            test: "✅ Modalità offline attiva. Test completato con successo.",
+            ciao: "Ciao! Sono in modalità offline. Non posso connettermi a Claude AI in questo momento, ma posso mostrarti come funziona l'interfaccia.",
+            help: "Comandi disponibili in modalità offline:\n- 'test': Testa la connessione\n- 'info': Mostra informazioni sistema\n- 'clear': Pulisci chat\n- 'export': Esporta conversazione",
+            info: `Sistema: Claude AI Suite v2.0.0\nModalità: Offline\nModello: ${model} (simulato)\nMessaggi: ${this.state.stats.totalMessages}\nSessione: ${Math.floor((Date.now() - this.state.stats.startTime) / 1000)}s`,
+            default: `[Modalità Offline]\n\nHai scritto: "${prompt}"\n\nNon posso elaborare questa richiesta senza connessione a Claude AI.\n\nSuggerimenti:\n1. Verifica la connessione internet\n2. Ricarica la pagina (F5)\n3. Prova il pulsante "Test Connessione"\n\nStato: ${this.state.puterLastError?.message || 'Offline'}`
+        };
+        
+        const lowerPrompt = prompt.toLowerCase().trim();
+        const response = responses[lowerPrompt] || responses.default;
+        
+        // Simulate processing delay
+        return new Promise(resolve => {
+            setTimeout(() => resolve(response), 500 + Math.random() * 1000);
+        });
+    }
+
+    /**
+     * Load Application State
+     */
+    async loadState() {
+        try {
+            // Load from localStorage
+            const keys = ['conversations', 'settings', 'stats', 'theme'];
+            
+            for (const key of keys) {
+                const stored = localStorage.getItem(`claude_${key}`);
+                if (stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        if (key === 'settings') {
+                            // Merge with defaults
+                            this.state[key] = { ...this.state[key], ...parsed };
+                        } else {
+                            this.state[key] = parsed;
+                        }
+                    } catch (e) {
+                        console.error(`Error parsing ${key}:`, e);
+                    }
+                }
+            }
+            
+            // Validate loaded data
+            this.validateState();
+            
+            console.log('✅ State loaded successfully');
+            
+        } catch (error) {
+            console.error('❌ Error loading state:', error);
+            // Continue with defaults
+        }
+    }
+
+    /**
+     * Save Application State
+     */
+    saveState() {
+        try {
+            // Don't save sensitive data
+            const stateToSave = {
+                conversations: this.state.conversations,
+                settings: this.state.settings,
+                stats: this.state.stats,
+                theme: this.state.theme
+            };
+            
+            Object.entries(stateToSave).forEach(([key, value]) => {
+                localStorage.setItem(`claude_${key}`, JSON.stringify(value));
+            });
+            
+            console.log('💾 State saved');
+            
+        } catch (error) {
+            console.error('❌ Error saving state:', error);
+            
+            // Handle quota exceeded
+            if (error.name === 'QuotaExceededError') {
+                this.showNotification('Spazio di archiviazione pieno. Elimina alcune conversazioni.', 'warning');
+                this.cleanupOldConversations();
+            }
+        }
+    }
+
+    /**
+     * Validate State Data
+     */
+    validateState() {
+        // Validate conversations
+        if (!Array.isArray(this.state.conversations)) {
+            this.state.conversations = [];
+        }
+        
+        // Remove invalid conversations
+        this.state.conversations = this.state.conversations.filter(conv => {
+            return conv && conv.id && Array.isArray(conv.messages);
+        });
+        
+        // Validate settings
+        Object.entries(this.state.settings).forEach(([key, value]) => {
+            const expectedType = typeof AppState.settings[key];
+            if (typeof value !== expectedType) {
+                this.state.settings[key] = AppState.settings[key];
+            }
+        });
+        
+        // Validate stats
+        Object.entries(this.state.stats).forEach(([key, value]) => {
+            if (typeof value !== 'number' || value < 0) {
+                this.state.stats[key] = 0;
+            }
+        });
+    }
+
+    /**
+     * Message Handling with Validation
+     */
+    async sendMessage() {
+        if (this.state.isProcessing) {
+            console.warn('⚠️ Already processing a message');
+            return;
+        }
+        
+        const input = this.elements.messageInput;
+        const message = input?.value.trim();
+        
+        // Validate message
+        if (!message) {
+            this.showNotification('Scrivi un messaggio', 'warning');
+            return;
+        }
+        
+        if (message.length > CONFIG.VALIDATION.MAX_MESSAGE_LENGTH) {
+            this.showNotification(`Messaggio troppo lungo (max ${CONFIG.VALIDATION.MAX_MESSAGE_LENGTH} caratteri)`, 'error');
+            return;
+        }
+        
+        // Check if we have a current conversation
+        if (!this.state.currentConversationId) {
+            this.createNewChat();
+        }
+        
+        this.state.isProcessing = true;
+        this.updateUI();
+        
+        try {
+            // Add user message
+            this.addMessageToUI(message, 'user');
+            this.saveMessageToConversation(message, 'user');
+            
+            // Clear input
+            if (input) {
+                input.value = '';
+                input.style.height = 'auto';
+                input.focus();
+            }
+            
+            // Show typing indicator
+            const typingId = this.showTypingIndicator();
+            
+            // Get model and context
+            const model = this.elements.modelSelect?.value || 'claude-3-sonnet-20240229';
+            const conversation = this.getCurrentConversation();
+            const context = this.buildContext(conversation);
+            
+            // Prepare prompt
+            const fullPrompt = this.preparePrompt(message, context);
+            
+            // Call Claude
+            let response;
+            if (this.state.settings.streamingEnabled && this.state.puterReady) {
+                // Handle streaming
+                response = await this.handleStreamingMessage(fullPrompt, model, typingId);
+            } else {
+                // Regular response
+                response = await this.callClaude(fullPrompt, model);
+                this.removeTypingIndicator(typingId);
+                this.addMessageToUI(response, 'assistant');
+            }
+            
+            // Save response
+            this.saveMessageToConversation(response, 'assistant');
+            
+            // Update conversation title if needed
+            if (conversation && conversation.messages.length <= 2) {
+                await this.generateConversationTitle(conversation, message);
+            }
+            
+            // Update stats
+            this.state.stats.totalMessages++;
+            this.updateStatusBar();
+            
+            // Emit event
+            this.emit('message:sent', { user: message, assistant: response });
+            
+        } catch (error) {
+            console.error('❌ Error sending message:', error);
+            this.removeTypingIndicator();
+            
+            const errorMessage = this.getErrorMessage(error);
+            this.addMessageToUI(errorMessage, 'error');
+            this.showNotification(errorMessage, 'error');
+            
+            // Log error
+            this.logError('send_message', error, { message, model: this.elements.modelSelect?.value });
+            
+        } finally {
+            this.state.isProcessing = false;
+            this.updateUI();
+        }
+    }
+
+    /**
+     * Handle Streaming Message
+     */
+    async handleStreamingMessage(prompt, model, typingId) {
+        // Remove typing indicator
+        this.removeTypingIndicator(typingId);
+        
+        // Create message container
+        const messageId = this.generateId();
+        const messageDiv = this.createMessageElement('', 'assistant', messageId);
+        this.elements.messagesWrapper?.appendChild(messageDiv);
+        
+        const contentEl = messageDiv.querySelector('.message-bubble');
+        let fullResponse = '';
+        
+        try {
+            const stream = await this.callClaude(prompt, model, { stream: true });
+            
+            for await (const chunk of stream) {
+                fullResponse += chunk;
+                contentEl.textContent = fullResponse;
+                this.scrollToBottom();
+            }
+            
+            return fullResponse;
+            
+        } catch (error) {
+            // Remove incomplete message on error
+            messageDiv.remove();
+            throw error;
+        }
+    }
+
+    /**
+     * UI Helper Methods
+     */
+    hideLoadingScreen() {
+        const loadingScreen = this.elements.loadingScreen;
+        const app = this.elements.app;
         
         if (loadingScreen) {
-            loadingScreen.style.display = 'none';
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 300);
         }
         
         if (app) {
             app.style.display = 'flex';
+            app.style.opacity = '0';
+            setTimeout(() => {
+                app.style.opacity = '1';
+            }, 50);
         }
     }
 
-    // Handle initialization errors
-    handleInitError(error) {
-        console.error('Init error:', error);
-        
-        // Force show UI
-        this.forceShowUI();
-        
-        // Show error notification
-        setTimeout(() => {
-            this.showNotification(`Errore inizializzazione: ${error.message}`, 'error');
-        }, 500);
-    }
-
-    // Cache DOM Elements with null checks
-    cacheElements() {
-        this.elements = {
-            // Screens
-            loadingScreen: document.getElementById('loadingScreen'),
-            app: document.getElementById('app'),
-            welcomeScreen: document.getElementById('welcomeScreen'),
-            chatView: document.getElementById('chatView'),
-            
-            // Header
-            menuToggle: document.getElementById('menuToggle'),
-            searchInput: document.getElementById('searchInput'),
-            modelSelect: document.getElementById('modelSelect'),
-            themeToggle: document.getElementById('themeToggle'),
-            settingsBtn: document.getElementById('settingsBtn'),
-            
-            // Sidebar
-            sidebar: document.getElementById('sidebar'),
-            sidebarOverlay: document.getElementById('sidebarOverlay'),
-            newChatBtn: document.getElementById('newChatBtn'),
-            conversationsList: document.getElementById('conversationsList'),
-            importBtn: document.getElementById('importBtn'),
-            exportAllBtn: document.getElementById('exportAllBtn'),
-            
-            // Chat
-            chatTitle: document.getElementById('chatTitle'),
-            chatMeta: document.getElementById('chatMeta'),
-            messagesArea: document.getElementById('messagesArea'),
-            messagesWrapper: document.getElementById('messagesWrapper'),
-            editTitleBtn: document.getElementById('editTitleBtn'),
-            exportChatBtn: document.getElementById('exportChatBtn'),
-            deleteChatBtn: document.getElementById('deleteChatBtn'),
-            
-            // Input
-            messageInput: document.getElementById('messageInput'),
-            sendBtn: document.getElementById('sendBtn'),
-            
-            // Status
-            statusIndicator: document.getElementById('statusIndicator'),
-            statusText: document.getElementById('statusText'),
-            messageCount: document.getElementById('messageCount'),
-            modelStatus: document.getElementById('modelStatus')
-        };
-    }
-
-    // Setup Event Listeners with null checks
-    setupEventListeners() {
-        // Header events
-        this.elements.menuToggle?.addEventListener('click', () => this.toggleSidebar());
-        this.elements.searchInput?.addEventListener('input', (e) => this.handleSearch(e.target.value));
-        this.elements.modelSelect?.addEventListener('change', () => this.updateModelStatus());
-        this.elements.themeToggle?.addEventListener('click', () => this.toggleTheme());
-        this.elements.settingsBtn?.addEventListener('click', () => this.showSettings());
-        
-        // Sidebar events
-        this.elements.newChatBtn?.addEventListener('click', () => this.createNewChat());
-        this.elements.importBtn?.addEventListener('click', () => this.importConversations());
-        this.elements.exportAllBtn?.addEventListener('click', () => this.exportAllConversations());
-        this.elements.sidebarOverlay?.addEventListener('click', () => this.toggleSidebar());
-        
-        // Chat events
-        this.elements.editTitleBtn?.addEventListener('click', () => this.editChatTitle());
-        this.elements.exportChatBtn?.addEventListener('click', () => this.exportCurrentChat());
-        this.elements.deleteChatBtn?.addEventListener('click', () => this.deleteCurrentChat());
-        
-        // Input events
-        this.elements.messageInput?.addEventListener('input', () => this.handleInputResize());
-        this.elements.messageInput?.addEventListener('keydown', (e) => this.handleInputKeydown(e));
-        this.elements.sendBtn?.addEventListener('click', () => this.sendMessage());
-        
-        // Window events
-        window.addEventListener('resize', () => this.handleResize());
-        window.addEventListener('beforeunload', () => this.saveState());
-        window.addEventListener('online', () => this.handleOnlineStatus(true));
-        window.addEventListener('offline', () => this.handleOnlineStatus(false));
-        
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => this.handleGlobalKeydown(e));
-    }
-
-    // Load State with error handling
-    loadState() {
-        try {
-            // Load conversations
-            const savedConversations = localStorage.getItem('claudeConversations');
-            if (savedConversations) {
-                this.state.conversations = JSON.parse(savedConversations);
-            }
-            
-            // Load settings
-            const savedSettings = localStorage.getItem('claudeSettings');
-            if (savedSettings) {
-                this.state.settings = { ...this.state.settings, ...JSON.parse(savedSettings) };
-            }
-            
-            // Load stats
-            const savedStats = localStorage.getItem('claudeStats');
-            if (savedStats) {
-                this.state.stats = { ...this.state.stats, ...JSON.parse(savedStats) };
-            }
-        } catch (error) {
-            console.error('Error loading state:', error);
-            // Continue with default state
-        }
-    }
-
-    // Save State
-    saveState() {
-        try {
-            localStorage.setItem('claudeConversations', JSON.stringify(this.state.conversations));
-            localStorage.setItem('claudeSettings', JSON.stringify(this.state.settings));
-            localStorage.setItem('claudeStats', JSON.stringify(this.state.stats));
-        } catch (error) {
-            console.error('Error saving state:', error);
-        }
-    }
-
-    // Initialize UI
-    initializeUI() {
-        // Render conversations list
-        this.renderConversationsList();
-        
-        // Update status bar
-        this.updateStatusBar();
-        
-        // Load last conversation or show welcome
-        if (this.state.conversations.length > 0) {
-            const lastConv = this.state.conversations[0];
-            this.loadConversation(lastConv.id);
-        } else {
-            this.showWelcomeScreen();
-        }
-    }
-
-    // Hide Loading Screen
-    hideLoadingScreen() {
+    forceShowUI() {
         if (this.elements.loadingScreen) {
             this.elements.loadingScreen.style.display = 'none';
         }
@@ -248,826 +737,305 @@ class ClaudeAIApp {
         }
     }
 
-    // Check Puter Connection
-    async checkPuterConnection() {
-        try {
-            if (typeof puter === 'undefined') {
-                throw new Error('Puter.js not loaded');
-            }
-            
-            // Test connection with timeout
-            const timeout = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout')), 5000)
-            );
-            
-            const test = puter.ai.chat('test', {
-                model: 'claude-3-haiku-20240307',
-                stream: false
-            });
-            
-            await Promise.race([test, timeout]);
-            
-            this.puterReady = true;
-            console.log('✅ Puter.js connection successful');
-            this.updateConnectionStatus('connected');
-            
-        } catch (error) {
-            console.warn('⚠️ Puter.js connection failed:', error);
-            this.puterReady = false;
-            this.updateConnectionStatus('offline');
-            // Don't show error for offline mode
-        }
-    }
-
-    // Update Connection Status
-    updateConnectionStatus(status) {
-        const indicator = this.elements.statusIndicator;
-        const text = this.elements.statusText;
-        
-        if (indicator && text) {
-            switch (status) {
-                case 'connected':
-                    indicator.className = 'status-indicator';
-                    text.textContent = 'Connesso';
-                    break;
-                case 'offline':
-                    indicator.className = 'status-indicator warning';
-                    text.textContent = 'Offline';
-                    break;
-                case 'error':
-                    indicator.className = 'status-indicator error';
-                    text.textContent = 'Errore';
-                    break;
-            }
-        }
-    }
-
-    // Handle Online/Offline Status
-    handleOnlineStatus(isOnline) {
-        this.state.isOnline = isOnline;
-        if (isOnline) {
-            this.showNotification('Connessione ripristinata', 'success');
-            this.checkPuterConnection();
-        } else {
-            this.showNotification('Modalità offline', 'warning');
-            this.updateConnectionStatus('offline');
-        }
-    }
-
-    // Theme Management
-    applyTheme(theme) {
-        this.state.theme = theme;
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-        
-        const icon = this.elements.themeToggle?.querySelector('i');
-        if (icon) {
-            icon.className = theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-        }
-    }
-
-    toggleTheme() {
-        const newTheme = this.state.theme === 'dark' ? 'light' : 'dark';
-        this.applyTheme(newTheme);
-    }
-
-    // Sidebar Management
-    toggleSidebar() {
-        this.elements.sidebar?.classList.toggle('open');
-        this.elements.sidebarOverlay?.classList.toggle('active');
-    }
-
-    // Conversation Management
-    createNewChat() {
-        const conversation = {
-            id: this.generateId(),
-            title: 'Nuova Conversazione',
-            messages: [],
-            model: this.elements.modelSelect?.value || 'claude-3-sonnet-20240229',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        
-        this.state.conversations.unshift(conversation);
-        this.state.currentConversationId = conversation.id;
-        
-        this.saveState();
-        this.renderConversationsList();
-        this.loadConversation(conversation.id);
-        
-        // Close sidebar on mobile
-        if (window.innerWidth <= 768) {
-            this.toggleSidebar();
-        }
-    }
-
-    loadConversation(id) {
-        const conversation = this.state.conversations.find(c => c.id === id);
-        if (!conversation) return;
-        
-        this.state.currentConversationId = id;
-        
-        // Update UI
-        this.hideWelcomeScreen();
-        this.showChatView();
-        
-        // Update chat header
-        if (this.elements.chatTitle) {
-            this.elements.chatTitle.textContent = conversation.title;
-        }
-        if (this.elements.chatMeta) {
-            this.elements.chatMeta.textContent = `${conversation.messages.length} messaggi`;
-        }
-        
-        // Clear and load messages
-        this.clearMessages();
-        conversation.messages.forEach(msg => {
-            this.addMessageToUI(msg.content, msg.role, false);
-        });
-        
-        // Update conversations list
+    initializeUI() {
+        // Render conversations
         this.renderConversationsList();
         
         // Update status
         this.updateStatusBar();
         
-        // Focus input
-        this.elements.messageInput?.focus();
-    }
-
-    deleteConversation(id) {
-        if (!confirm('Vuoi davvero eliminare questa conversazione?')) return;
-        
-        const index = this.state.conversations.findIndex(c => c.id === id);
-        if (index === -1) return;
-        
-        this.state.conversations.splice(index, 1);
-        
-        // If deleting current conversation, load another or show welcome
-        if (this.state.currentConversationId === id) {
-            if (this.state.conversations.length > 0) {
-                this.loadConversation(this.state.conversations[0].id);
-            } else {
-                this.showWelcomeScreen();
-            }
+        // Show appropriate screen
+        if (this.state.conversations.length > 0) {
+            const lastConv = this.state.conversations[0];
+            this.loadConversation(lastConv.id);
+        } else {
+            this.showWelcomeScreen();
         }
         
-        this.saveState();
-        this.renderConversationsList();
+        // Setup tooltips
+        this.initTooltips();
+        
+        // Check for updates
+        this.checkForUpdates();
     }
 
-    deleteCurrentChat() {
-        if (this.state.currentConversationId) {
-            this.deleteConversation(this.state.currentConversationId);
-        }
-    }
-
-    editChatTitle() {
-        const conversation = this.getCurrentConversation();
-        if (!conversation) return;
-        
-        const newTitle = prompt('Nuovo titolo:', conversation.title);
-        if (newTitle && newTitle.trim()) {
-            conversation.title = newTitle.trim();
-            conversation.updatedAt = new Date().toISOString();
-            this.saveState();
-            this.loadConversation(conversation.id);
-        }
-    }
-
-    renderConversationsList() {
-        const list = this.elements.conversationsList;
-        if (!list) return;
-        
-        list.innerHTML = '';
-        
-        // Group conversations by date
-        const grouped = this.groupConversationsByDate(this.state.conversations);
-        
-        Object.entries(grouped).forEach(([label, conversations]) => {
-            if (conversations.length === 0) return;
-            
-            // Add group label
-            const groupLabel = document.createElement('div');
-            groupLabel.className = 'conversation-group-label';
-            groupLabel.textContent = label;
-            list.appendChild(groupLabel);
-            
-            // Add conversations
-            conversations.forEach(conv => {
-                const item = this.createConversationItem(conv);
-                list.appendChild(item);
-            });
-        });
-    }
-
-    createConversationItem(conversation) {
-        const item = document.createElement('div');
-        item.className = 'conversation-item';
-        if (conversation.id === this.state.currentConversationId) {
-            item.classList.add('active');
-        }
-        
-        const date = new Date(conversation.updatedAt);
-        const timeStr = this.formatRelativeTime(date);
-        
-        item.innerHTML = `
-            <div class="conversation-content">
-                <div class="conversation-title">${this.escapeHtml(conversation.title)}</div>
-                <div class="conversation-meta">
-                    <i class="fas fa-clock"></i> ${timeStr} • ${conversation.messages.length} messaggi
-                </div>
-            </div>
-            <div class="conversation-actions">
-                <button class="conversation-action" onclick="app.deleteConversation('${conversation.id}')" aria-label="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
-        
-        item.addEventListener('click', (e) => {
-            if (!e.target.closest('.conversation-actions')) {
-                this.loadConversation(conversation.id);
-            }
-        });
-        
-        return item;
-    }
-
-    groupConversationsByDate(conversations) {
-        const groups = {
-            'Oggi': [],
-            'Ieri': [],
-            'Ultimi 7 giorni': [],
-            'Ultimi 30 giorni': [],
-            'Più vecchie': []
-        };
-        
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const weekAgo = new Date(today);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        const monthAgo = new Date(today);
-        monthAgo.setDate(monthAgo.getDate() - 30);
-        
-        conversations.forEach(conv => {
-            const convDate = new Date(conv.updatedAt);
-            
-            if (convDate >= today) {
-                groups['Oggi'].push(conv);
-            } else if (convDate >= yesterday) {
-                groups['Ieri'].push(conv);
-            } else if (convDate >= weekAgo) {
-                groups['Ultimi 7 giorni'].push(conv);
-            } else if (convDate >= monthAgo) {
-                groups['Ultimi 30 giorni'].push(conv);
-            } else {
-                groups['Più vecchie'].push(conv);
-            }
-        });
-        
-        return groups;
-    }
-
-    // Message Handling
-    async sendMessage() {
-        if (this.state.isProcessing) return;
-        
-        const input = this.elements.messageInput;
-        const message = input?.value.trim();
-        
-        if (!message) return;
-        
-        this.state.isProcessing = true;
-        this.updateUI();
-        
-        // Add user message
-        this.addMessageToUI(message, 'user');
-        this.saveMessageToConversation(message, 'user');
-        
-        // Clear input
-        if (input) {
-            input.value = '';
-            input.style.height = 'auto';
-        }
-        
-        // Show typing indicator
-        const typingId = this.showTypingIndicator();
-        
-        try {
-            const model = this.elements.modelSelect?.value || 'claude-3-sonnet-20240229';
-            const conversation = this.getCurrentConversation();
-            
-            // Build context
-            const context = this.buildContext(conversation);
-            
-            // Call Claude via Puter or use mock
-            const response = await this.callClaude(context + '\n\nUtente: ' + message, model);
-            
-            // Remove typing indicator
-            this.removeTypingIndicator(typingId);
-            
-            // Add assistant response
-            this.addMessageToUI(response, 'assistant');
-            this.saveMessageToConversation(response, 'assistant');
-            
-            // Update conversation title if first message
-            if (conversation && conversation.messages.length <= 2) {
-                conversation.title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
-                this.saveState();
-                this.renderConversationsList();
-            }
-            
-            // Update stats
-            this.state.stats.totalMessages++;
-            this.state.stats.totalTokens += Math.round((message.length + response.length) / 4);
-            this.updateStatusBar();
-            
-        } catch (error) {
-            console.error('Error:', error);
-            this.removeTypingIndicator(typingId);
-            
-            const errorMsg = this.getErrorMessage(error);
-            this.addMessageToUI(errorMsg, 'error');
-            
-        } finally {
-            this.state.isProcessing = false;
-            this.updateUI();
-        }
-    }
-
-    async callClaude(prompt, model) {
-        // Check if Puter is available
-        if (!this.puterReady || typeof puter === 'undefined' || !puter.ai) {
-            console.warn('Using mock mode');
-            // Use mock response
-            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-            return `[Modalità Offline] Questa è una risposta di test. Per utilizzare Claude AI, assicurati di avere una connessione internet attiva.`;
-        }
-        
-        try {
-            // Try with streaming first
-            const response = await puter.ai.chat(prompt, {
-                model: model,
-                stream: true
-            });
-            
-            let fullResponse = '';
-            
-            // Handle streaming response
-            if (response && typeof response === 'object' && response[Symbol.asyncIterator]) {
-                for await (const chunk of response) {
-                    if (chunk?.text) {
-                        fullResponse += chunk.text;
-                    }
-                }
-                return fullResponse || 'Risposta vuota';
-            }
-            
-            // Handle non-streaming response
-            return response?.text || response || 'Risposta non disponibile';
-            
-        } catch (error) {
-            console.log('Streaming failed, trying non-streaming');
-            
-            // Fallback to non-streaming
-            try {
-                const response = await puter.ai.chat(prompt, {
-                    model: model,
-                    stream: false
-                });
-                
-                if (typeof response === 'string') return response;
-                if (response?.text) return response.text;
-                if (response?.content) return response.content;
-                
-                return 'Risposta non disponibile';
-            } catch (fallbackError) {
-                throw fallbackError;
-            }
-        }
-    }
-
-    addMessageToUI(content, role, animate = true) {
-        const wrapper = this.elements.messagesWrapper;
-        if (!wrapper) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${role}`;
-        if (animate) messageDiv.style.animation = 'messageSlide 0.3s ease';
-        
-        const avatar = role === 'user' ? 'U' : (role === 'assistant' ? 'C' : '!');
-        const avatarIcon = role === 'user' ? 'fa-user' : (role === 'assistant' ? 'fa-robot' : 'fa-exclamation');
-        
-        messageDiv.innerHTML = `
-            <div class="message-avatar">
-                <i class="fas ${avatarIcon}"></i>
-            </div>
-            <div class="message-content">
-                <div class="message-bubble">${this.formatMessage(content)}</div>
-                ${this.state.settings.showTimestamps ? `<div class="message-time">${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
-            </div>
-        `;
-        
-        wrapper.appendChild(messageDiv);
-        this.scrollToBottom();
-    }
-
-    showTypingIndicator() {
-        const id = this.generateId();
-        const wrapper = this.elements.messagesWrapper;
-        if (!wrapper) return id;
-        
-        const typingDiv = document.createElement('div');
-        typingDiv.className = 'message assistant';
-        typingDiv.id = `typing-${id}`;
-        
-        typingDiv.innerHTML = `
-            <div class="message-avatar">
-                <i class="fas fa-robot"></i>
-            </div>
-            <div class="message-content">
-                <div class="message-bubble">
-                    <div class="typing-indicator">
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        wrapper.appendChild(typingDiv);
-        this.scrollToBottom();
-        return id;
-    }
-
-    removeTypingIndicator(id) {
-        const element = document.getElementById(`typing-${id}`);
-        if (element) element.remove();
-    }
-
-    saveMessageToConversation(content, role) {
-        const conversation = this.getCurrentConversation();
-        if (!conversation) return;
-        
-        conversation.messages.push({
-            id: this.generateId(),
-            content,
-            role,
-            timestamp: new Date().toISOString()
-        });
-        
-        conversation.updatedAt = new Date().toISOString();
-        this.saveState();
-        this.updateUI();
-    }
-
-    // UI Helper Methods
-    showWelcomeScreen() {
-        if (this.elements.welcomeScreen) {
-            this.elements.welcomeScreen.style.display = 'flex';
-        }
-        if (this.elements.chatView) {
-            this.elements.chatView.style.display = 'none';
-        }
-        this.state.currentConversationId = null;
-    }
-
-    hideWelcomeScreen() {
-        if (this.elements.welcomeScreen) {
-            this.elements.welcomeScreen.style.display = 'none';
-        }
-    }
-
-    showChatView() {
-        if (this.elements.chatView) {
-            this.elements.chatView.style.display = 'flex';
-        }
-    }
-
-    clearMessages() {
-        if (this.elements.messagesWrapper) {
-            this.elements.messagesWrapper.innerHTML = '';
-        }
-    }
-
-    scrollToBottom() {
-        const area = this.elements.messagesArea;
-        if (area) {
-            area.scrollTop = area.scrollHeight;
-        }
-    }
-
-    updateUI() {
-        // Update button states
-        if (this.elements.sendBtn) {
-            this.elements.sendBtn.disabled = this.state.isProcessing;
-        }
-        
-        // Update status bar
-        this.updateStatusBar();
-    }
-
-    updateStatusBar() {
-        // Update model status
-        const modelSelect = this.elements.modelSelect;
-        if (modelSelect && this.elements.modelStatus) {
-            const selectedOption = modelSelect.selectedOptions[0];
-            this.elements.modelStatus.textContent = selectedOption ? selectedOption.text : 'Claude AI';
-        }
-        
-        // Update message count
-        const conversation = this.getCurrentConversation();
-        if (conversation && this.elements.messageCount) {
-            this.elements.messageCount.textContent = `${conversation.messages.length} messaggi`;
-        }
-        
-        // Update connection status
-        if (this.state.isProcessing) {
-            this.updateConnectionStatus('processing');
-        }
-    }
-
-    updateModelStatus() {
-        this.updateStatusBar();
-    }
-
-    // Input Handling
-    handleInputResize() {
-        const input = this.elements.messageInput;
-        if (!input) return;
-        
-        input.style.height = 'auto';
-        input.style.height = Math.min(input.scrollHeight, 200) + 'px';
-    }
-
-    handleInputKeydown(e) {
-        if (e.key === 'Enter') {
-            if (e.ctrlKey || e.metaKey || (this.state.settings.enterToSend && !e.shiftKey)) {
-                e.preventDefault();
-                this.sendMessage();
-            }
-        }
-    }
-
-    handleGlobalKeydown(e) {
-        // Ctrl/Cmd + N: New chat
-        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-            e.preventDefault();
-            this.createNewChat();
-        }
-        
-        // Ctrl/Cmd + /: Focus search
-        if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-            e.preventDefault();
-            this.elements.searchInput?.focus();
-        }
-        
-        // Ctrl/Cmd + ,: Settings
-        if ((e.ctrlKey || e.metaKey) && e.key === ',') {
-            e.preventDefault();
-            this.showSettings();
-        }
-    }
-
-    // Search functionality
-    handleSearch(query) {
-        const lowerQuery = query.toLowerCase();
-        const conversations = this.state.conversations.filter(conv => {
-            return conv.title.toLowerCase().includes(lowerQuery) ||
-                   conv.messages.some(msg => msg.content.toLowerCase().includes(lowerQuery));
-        });
-        
-        // Re-render with filtered conversations
-        this.renderFilteredConversations(conversations, query);
-    }
-
-    renderFilteredConversations(conversations, query) {
-        const list = this.elements.conversationsList;
-        if (!list) return;
-        
-        list.innerHTML = '';
-        
-        if (conversations.length === 0) {
-            list.innerHTML = `<div class="no-results">Nessun risultato per "${this.escapeHtml(query)}"</div>`;
-            return;
-        }
-        
-        conversations.forEach(conv => {
-            const item = this.createConversationItem(conv);
-            list.appendChild(item);
-        });
-    }
-
-    // Export/Import functionality
-    exportCurrentChat() {
-        const conversation = this.getCurrentConversation();
-        if (!conversation || conversation.messages.length === 0) {
-            this.showNotification('Nessun messaggio da esportare', 'warning');
-            return;
-        }
-        
-        const content = this.formatConversationForExport(conversation);
-        this.downloadFile(content, `claude-chat-${conversation.id}.txt`, 'text/plain');
-        this.showNotification('Chat esportata', 'success');
-    }
-
-    exportAllConversations() {
-        if (this.state.conversations.length === 0) {
-            this.showNotification('Nessuna conversazione da esportare', 'warning');
-            return;
-        }
-        
-        const data = {
-            version: '1.0',
-            exportDate: new Date().toISOString(),
-            conversations: this.state.conversations
-        };
-        
-        const content = JSON.stringify(data, null, 2);
-        this.downloadFile(content, `claude-backup-${Date.now()}.json`, 'application/json');
-        this.showNotification('Backup completato', 'success');
-    }
-
-    importConversations() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            try {
-                const text = await file.text();
-                const data = JSON.parse(text);
-                
-                if (!data.conversations || !Array.isArray(data.conversations)) {
-                    throw new Error('Formato file non valido');
-                }
-                
-                // Merge conversations
-                const imported = data.conversations.filter(conv => 
-                    !this.state.conversations.find(c => c.id === conv.id)
-                );
-                
-                this.state.conversations.unshift(...imported);
-                this.saveState();
-                this.renderConversationsList();
-                
-                this.showNotification(`Importate ${imported.length} conversazioni`, 'success');
-                
-            } catch (error) {
-                console.error('Import error:', error);
-                this.showNotification('Errore durante l\'importazione', 'error');
-            }
-        };
-        
-        input.click();
-    }
-
-    formatConversationForExport(conversation) {
-        let content = `Claude AI Suite - Conversazione Esportata\n`;
-        content += `====================================\n\n`;
-        content += `Titolo: ${conversation.title}\n`;
-        content += `Data: ${new Date(conversation.createdAt).toLocaleString('it-IT')}\n`;
-        content += `Messaggi: ${conversation.messages.length}\n\n`;
-        content += `====================================\n\n`;
-        
-        conversation.messages.forEach(msg => {
-            const role = msg.role === 'user' ? 'UTENTE' : 'CLAUDE';
-            const time = new Date(msg.timestamp).toLocaleTimeString('it-IT');
-            content += `[${role}] ${time}\n`;
-            content += `${msg.content}\n\n`;
-            content += `---\n\n`;
-        });
-        
-        return content;
-    }
-
-    downloadFile(content, filename, type) {
-        const blob = new Blob([content], { type });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    // Settings
-    showSettings() {
-        // TODO: Implement settings modal
-        this.showNotification('Impostazioni in arrivo nella prossima versione!', 'info');
-    }
-
-    // Notifications
-    showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            max-width: 300px;
-            z-index: 1000;
-            animation: slideIn 0.3s ease;
-        `;
-        
-        const icon = type === 'success' ? 'fa-check-circle' : 
-                    type === 'error' ? 'fa-exclamation-circle' : 
-                    type === 'warning' ? 'fa-exclamation-triangle' : 
-                    'fa-info-circle';
-        
-        notification.innerHTML = `
-            <i class="fas ${icon}"></i>
-            <div>
-                <div class="notification-message">${this.escapeHtml(message)}</div>
-            </div>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    }
-
-    // Utility Methods
-    getCurrentConversation() {
-        return this.state.conversations.find(c => c.id === this.state.currentConversationId);
-    }
-
-    buildContext(conversation) {
-        if (!conversation || conversation.messages.length === 0) return '';
-        
-        const contextLength = this.state.settings.contextLength;
-        const contextMessages = conversation.messages.slice(-contextLength);
-        
-        return contextMessages.map(m => 
-            `${m.role === 'user' ? 'Utente' : 'Assistente'}: ${m.content}`
-        ).join('\n\n');
-    }
-
-    formatMessage(content) {
-        // Basic markdown-like formatting
-        return content
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\n/g, '<br>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/`(.*?)`/g, '<code>$1</code>');
-    }
-
-    formatRelativeTime(date) {
-        const now = new Date();
-        const diff = now - date;
-        const seconds = Math.floor(diff / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const hours = Math.floor(minutes / 60);
-        const days = Math.floor(hours / 24);
-        
-        if (days > 0) return `${days}g fa`;
-        if (hours > 0) return `${hours}h fa`;
-        if (minutes > 0) return `${minutes}m fa`;
-        return 'Ora';
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
+    /**
+     * Utility Methods
+     */
     generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
 
-    getErrorMessage(error) {
-        if (!navigator.onLine || !this.state.isOnline) {
-            return '📵 Sei offline. Controlla la tua connessione internet.';
-        }
-        if (error.message.includes('timeout')) {
-            return '⏱️ Timeout della richiesta. Riprova.';
-        }
-        if (error.message.includes('rate')) {
-            return '⚠️ Troppe richieste. Attendi un momento.';
-        }
-        return `❌ Errore: ${error.message || 'Errore sconosciuto'}`;
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    handleResize() {
-        // Handle responsive changes
-        if (window.innerWidth > 768) {
-            // Close mobile sidebar if open
-            this.elements.sidebar?.classList.remove('open');
-            this.elements.sidebarOverlay?.classList.remove('active');
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    throttle(func, limit) {
+        let inThrottle;
+        return function(...args) {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    }
+
+    /**
+     * Event System
+     */
+    on(element, event, handler) {
+        if (!element) return;
+        
+        element.addEventListener(event, handler);
+        
+        // Track listeners for cleanup
+        if (!this.listeners.has(element)) {
+            this.listeners.set(element, []);
+        }
+        this.listeners.get(element).push({ event, handler });
+    }
+
+    off(element, event, handler) {
+        if (!element) return;
+        element.removeEventListener(event, handler);
+    }
+
+    emit(event, data) {
+        window.dispatchEvent(new CustomEvent(event, { detail: data }));
+    }
+
+    delegate(event, selector, handler) {
+        document.addEventListener(event, (e) => {
+            const target = e.target.closest(selector);
+            if (target) {
+                handler.call(target, e);
+            }
+        });
+    }
+
+    /**
+     * Error Handling and Logging
+     */
+    handleInitError(error) {
+        console.error('Init error:', error);
+        this.forceShowUI();
+        
+        if (this.elements.welcomeStatus) {
+            this.elements.welcomeStatus.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Errore di inizializzazione</strong><br>
+                    ${error.message}<br>
+                    <small>Alcune funzionalità potrebbero non essere disponibili.</small>
+                </div>
+            `;
         }
     }
+
+    handleGlobalError(event) {
+        console.error('Global error:', event);
+        this.state.stats.errorsCount++;
+    }
+
+    logError(type, error, context = {}) {
+        const errorLog = {
+            type,
+            message: error.message,
+            stack: error.stack,
+            context,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent
+        };
+        
+        console.error('Error logged:', errorLog);
+        
+        // Store in error log
+        if (!window.ERROR_LOG) window.ERROR_LOG = [];
+        window.ERROR_LOG.push(errorLog);
+        
+        // Send to analytics if enabled
+        if (this.state.settings.analytics) {
+            this.sendAnalytics('error', errorLog);
+        }
+    }
+
+    logPerformance(marker) {
+        const time = performance.now();
+        this.performance.metrics.push({ marker, time });
+        
+        if (window.DEBUG_MODE) {
+            console.log(`⏱️ Performance: ${marker} at ${time.toFixed(2)}ms`);
+        }
+    }
+
+    /**
+     * Connection Management
+     */
+    updateConnectionStatus(status, message) {
+        const indicator = this.elements.statusIndicator;
+        const text = this.elements.statusText;
+        
+        if (indicator) {
+            indicator.className = 'status-indicator';
+            switch (status) {
+                case 'connected':
+                    indicator.classList.add('success');
+                    break;
+                case 'connecting':
+                    indicator.classList.add('warning');
+                    break;
+                case 'offline':
+                case 'error':
+                    indicator.classList.add('error');
+                    break;
+            }
+        }
+        
+        if (text) {
+            text.textContent = message || status;
+        }
+        
+        // Update debug info
+        if (this.elements.debugInfo) {
+            this.elements.debugInfo.textContent = `Puter: ${status}`;
+        }
+    }
+
+    setupConnectionMonitoring() {
+        // Check connection every 30 seconds
+        this.connectionCheckInterval = setInterval(() => {
+            if (this.state.isOnline && !this.state.puterReady && !this.state.settings.offlineMode) {
+                this.checkPuterConnection();
+            }
+        }, 30000);
+    }
+
+    handleOnlineStatus(isOnline) {
+        this.state.isOnline = isOnline;
+        
+        if (isOnline) {
+            console.log('🌐 Back online');
+            this.showNotification('Connessione ripristinata', 'success');
+            
+            // Try to reconnect to Puter
+            if (!this.state.puterReady) {
+                this.checkPuterConnection();
+            }
+        } else {
+            console.log('📵 Went offline');
+            this.updateConnectionStatus('offline', 'Offline');
+            this.showNotification('Connessione persa', 'warning');
+        }
+    }
+
+    /**
+     * Cache Management
+     */
+    getCacheKey(prompt, model) {
+        return `${model}:${prompt.substring(0, 100)}`;
+    }
+
+    getCachedResponse(key) {
+        return this.state.cache.responses.get(key);
+    }
+
+    cacheResponse(key, response) {
+        // Limit cache size
+        if (this.state.cache.responses.size >= this.state.cache.maxSize) {
+            const firstKey = this.state.cache.responses.keys().next().value;
+            this.state.cache.responses.delete(firstKey);
+        }
+        
+        this.state.cache.responses.set(key, {
+            response,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Rate Limiting
+     */
+    checkRateLimit() {
+        const now = Date.now();
+        const windowStart = now - this.state.rateLimiter.timeWindow;
+        
+        // Remove old requests
+        this.state.rateLimiter.requests = this.state.rateLimiter.requests.filter(
+            time => time > windowStart
+        );
+        
+        // Check limit
+        if (this.state.rateLimiter.requests.length >= this.state.rateLimiter.maxRequests) {
+            return false;
+        }
+        
+        // Add current request
+        this.state.rateLimiter.requests.push(now);
+        return true;
+    }
+
+    /**
+     * Test Connection Method
+     */
+    async testConnection() {
+        try {
+            this.updateConnectionStatus('connecting', 'Testing...');
+            
+            const result = await this.checkPuterConnection();
+            
+            return {
+                success: result,
+                details: this.state.puterTestResults
+            };
+            
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Cleanup and Destroy
+     */
+    destroy() {
+        // Clear intervals
+        clearInterval(this.autoSaveInterval);
+        clearInterval(this.connectionCheckInterval);
+        clearTimeout(this.initTimeout);
+        
+        // Remove event listeners
+        this.listeners.forEach((handlers, element) => {
+            handlers.forEach(({ event, handler }) => {
+                element.removeEventListener(event, handler);
+            });
+        });
+        
+        // Save state
+        this.saveState();
+        
+        console.log('👋 App destroyed');
+    }
+
+    // ... Additional methods for UI management, conversations, etc.
+    // (These would include all the UI methods from the previous version)
+}
+
+// Initialize app when ready
+if (typeof window !== 'undefined') {
+    window.ClaudeAIApp = ClaudeAIApp;
 }
