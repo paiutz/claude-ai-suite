@@ -1,0 +1,70 @@
+{
+  "name": "Claude AI Suite - Professional AI Chat Interface",
+  "short_name": "Claude AI",
+  "description": "Chat professionale con Claude AI. Interfaccia moderna, veloce e privata powered by Puter.js",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#6366F1",
+  "background_color": "#0F0F0F",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "it",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "assets/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/images/screenshots/desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Claude AI Suite Desktop View"
+    },
+    {
+      "src": "assets/images/screenshots/mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Claude AI Suite Mobile View"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nuova Chat",
+      "short_name": "Nuova",
+      "description": "Inizia una nuova conversazione",
+      "url": "/?action=new-chat",
+      "icons": [
+        {
+          "src": "assets/images/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "prefer_related_applications": false,
+  "related_applications": []
+}
